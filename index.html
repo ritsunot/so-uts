@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcard Interactive - Sistem Operasi</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 15px;
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+            margin: 0;
+            color: var(--primary);
+        }
+
+        .score-board {
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e5e7eb;
+            border-radius: 4px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background-color: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .question-box {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .option-btn {
+            background-color: #f9fafb;
+            border: 2px solid #e5e7eb;
+            padding: 14px 18px;
+            border-radius: 10px;
+            text-align: left;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            background-color: #eeeffe;
+        }
+
+        .option-btn.correct {
+            background-color: #d1fae5 !important;
+            border-color: var(--success) !important;
+            color: #065f46;
+        }
+
+        .option-btn.incorrect {
+            background-color: #fee2e2 !important;
+            border-color: var(--danger) !important;
+            color: #991b1b;
+        }
+
+        .explanation-box {
+            background-color: #eff6ff;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: #6b7280;
+        }
+
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>Latihan UTS Sistem Operasi</h1>
+            <div class="score-board">Skor: <span id="score">0</span> / <span id="total-answered">0</span></div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+        </div>
+
+        <div id="quiz-body">
+            <div class="question-box" id="question">Memuat soal...</div>
+            <div class="options-container" id="options"></div>
+            <div class="explanation-box" id="explanation"></div>
+
+            <div class="controls">
+                <button class="btn btn-secondary" id="prev-btn" onclick="prevQuestion()" disabled>Sebelumnya</button>
+                <button class="btn" id="next-btn" onclick="nextQuestion()">Selanjutnya</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="questions.js"></script>
+    <script>
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let answeredQuestions = new Set();
+        let userAnswers = {};
+
+        function loadQuestion() {
+            const q = questions[currentQuestionIndex];
+            document.getElementById('question').innerText = `${currentQuestionIndex + 1}. ${q.question}`;
+            
+            const optionsContainer = document.getElementById('options');
+            optionsContainer.innerHTML = '';
+
+            const explanationBox = document.getElementById('explanation');
+            explanationBox.style.display = 'none';
+
+            q.options.forEach((opt, index) => {
+                const button = document.createElement('button');
+                button.classList.add('option-btn');
+                button.innerText = opt;
+                button.onclick = () => selectOption(index);
+
+                if (userAnswers[currentQuestionIndex] !== undefined) {
+                    button.disabled = true;
+                    if (index === q.answer) {
+                        button.classList.add('correct');
+                    }
+                    if (index === userAnswers[currentQuestionIndex] && index !== q.answer) {
+                        button.classList.add('incorrect');
+                    }
+                }
+
+                optionsContainer.appendChild(button);
+            });
+
+            if (userAnswers[currentQuestionIndex] !== undefined) {
+                explanationBox.innerText = `Penjelasan: ${q.explanation}`;
+                explanationBox.style.display = 'block';
+            }
+
+            document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
+            document.getElementById('next-btn').innerText = currentQuestionIndex === questions.length - 1 ? 'Selesai' : 'Selanjutnya';
+            
+            updateProgress();
+        }
+
+        function selectOption(index) {
+            const q = questions[currentQuestionIndex];
+            userAnswers[currentQuestionIndex] = index;
+
+            if (index === q.answer) {
+                score++;
+            }
+
+            answeredQuestions.add(currentQuestionIndex);
+            document.getElementById('score').innerText = score;
+            document.getElementById('total-answered').innerText = answeredQuestions.size;
+
+            loadQuestion();
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion();
+            } else {
+                alert(`Kuis Selesai!\nSkor Akhir Anda: ${score} dari ${questions.length}`);
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuestion();
+            }
+        }
+
+        function updateProgress() {
+            const progressPercent = ((currentQuestionIndex + 1) / questions.length) * 100;
+            document.getElementById('progress').style.width = `${progressPercent}%`;
+        }
+
+        // Initialize quiz
+        loadQuestion();
+    </script>
+</body>
+</html>
